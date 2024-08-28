@@ -28,16 +28,16 @@ func main() {
 
 	ctx := svc.NewServiceContext(c)
 
-  // 2. 设置WebSocket路径
-  ws := zerowebsocket.New("/ws")
+	// 2. 设置WebSocket路径
+	ws := zerowebsocket.New("/ws")
 
 	// 3. 增加WebSocket事件和对应的handler
-  ws.On("test", func(ctx WebsocketCtx) {
-    fmt.Println(ctx.Data.(string)) // 接收到数据
-    ctx.conn.WriteMessage(websocket.TextMessage, []byte("hello world")) // 发送数据
-  })
+	ws.On("test", func(ctx WebsocketCtx) {
+		fmt.Println(ctx.Data.(string))                                      // 接收到数据
+		ctx.conn.WriteMessage(websocket.TextMessage, []byte("hello world")) // 发送数据
+	})
 
-  // 4. 设置路由
+	// 4. 设置路由
 	server.AddRoute(ws.Route(ctx))
 
 	handler.RegisterHandlers(server, ctx)
