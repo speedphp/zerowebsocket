@@ -24,10 +24,10 @@ type WebsocketEventMessage struct {
 }
 
 type WebsocketCtx struct {
-	ctx    context.Context
-	svcCtx interface{}
-	event  string
-	conn   *websocket.Conn
+	Ctx    context.Context
+	SvcCtx interface{}
+	Event  string
+	Conn   *websocket.Conn
 	Data   interface{}
 }
 
@@ -69,10 +69,10 @@ func (z *ZeroWebSocket) Route(svcCtx interface{}) rest.Route {
 					return
 				}
 				z.eventList[websocketEventMessage.Event](WebsocketCtx{
-					ctx:    r.Context(),
-					svcCtx: svcCtx,
-					event:  websocketEventMessage.Event,
-					conn:   c,
+					Ctx:    r.Context(),
+					SvcCtx: svcCtx,
+					Event:  websocketEventMessage.Event,
+					Conn:   c,
 					Data:   websocketEventMessage.Data,
 				})
 			}
