@@ -32,9 +32,9 @@ func main() {
 	ws := zerowebsocket.New("/ws")
 
 	// 3. 增加WebSocket事件和对应的handler
-	ws.On("test", func(ctx WebsocketCtx) {
-		fmt.Println(ctx.Data.(string))                                      // 接收到数据
-		ctx.conn.WriteMessage(websocket.TextMessage, []byte("hello world")) // 发送数据
+	ws.On("test", func(ctx zerowebsocket.WebsocketCtx) {
+		word := ctx.Data.(string)                                           // 接收到数据
+		ctx.Conn.WriteMessage(websocket.TextMessage, []byte("hello " + word)) // 发送数据
 	})
 
 	// 4. 设置路由
@@ -47,7 +47,15 @@ func main() {
 }
 ```
 
-然后，WebSocket访问 ws://localhost:8080/ws 即可。
+## 测试
+
+使用[websocat](https://github.com/vi/websocat)在命令行测试WebSocket联通情况：
+
+```bash
+websocat ws://localhost:8080/ws
+{"event": "test", "data": "ok"}
+hello ok
+```
 
 ## 感谢
 
