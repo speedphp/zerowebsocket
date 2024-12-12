@@ -11,25 +11,44 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 )
 
-type ZeroWebSocket struct {
-	wsPath    string
-	eventList WebsocketEvents
-}
+type (
+	ZeroWebSocket struct {
+		wsPath    string
+		eventList WebsocketEvents
+	}
 
-type WebsocketEvents map[string]func(WebsocketCtx)
+	Event struct {
+		Event   string
+		Handler EventHandler
+	}
 
-type WebsocketEventMessage struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-}
+	WebsocketEvents map[string]EventHandler
 
-type WebsocketCtx struct {
-	Ctx    context.Context
-	SvcCtx interface{}
-	Event  string
-	Conn   *websocket.Conn
-	Data   interface{}
-}
+	EventHandler func(WebsocketCtx)
+
+	WebsocketEventMessage struct {
+		Event string      `json:"event"`
+		Data  interface{} `json:"data"`
+	}
+
+	WebsocketCtx struct {
+		Ctx    context.Context
+		SvcCtx interface{}
+		Event  string
+		Conn   *websocket.Conn
+		Data   interface{}
+	}
+)
+
+const (
+	// Reproduced from the gorilla/websocket package
+	// so you don't have to import it again
+	TextMessage   = 1
+	BinaryMessage = 2
+	CloseMessage  = 8
+	PingMessage   = 9
+	PongMessage   = 10
+)
 
 func New(path string) *ZeroWebSocket {
 	return &ZeroWebSocket{
@@ -40,6 +59,12 @@ func New(path string) *ZeroWebSocket {
 
 func (z *ZeroWebSocket) On(eventName string, handler func(ctx WebsocketCtx)) {
 	z.eventList[eventName] = handler
+}
+
+func OnEvents(z *ZeroWebSocket, events ...Event) {
+	for _, e := range events {
+		z.eventList[e.Event] = e.Handler
+	}
 }
 
 func (z *ZeroWebSocket) Route(svcCtx interface{}) rest.Route {
