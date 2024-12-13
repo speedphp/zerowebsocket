@@ -47,7 +47,7 @@ type (
 	}
 
 	RouteOptions struct {
-		svcCtx        interface{}
+		SvcCtx        interface{}
 		OriginHandler OriginHandler
 		CloseHandler  EventHandler
 		ErrorHandler  ErrorHandler
@@ -108,7 +108,7 @@ func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
 				if opts.CloseHandler != nil {
 					opts.CloseHandler(WebsocketCtx{
 						Ctx:    r.Context(),
-						SvcCtx: opts.svcCtx,
+						SvcCtx: opts.SvcCtx,
 						Event:  "",
 						Conn:   c,
 						Data:   nil,
@@ -130,7 +130,7 @@ func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
 				}
 				z.eventList[websocketEventMessage.Event](WebsocketCtx{
 					Ctx:    r.Context(),
-					SvcCtx: opts.svcCtx,
+					SvcCtx: opts.SvcCtx,
 					Event:  websocketEventMessage.Event,
 					Conn:   c,
 					Data:   websocketEventMessage.Data,
