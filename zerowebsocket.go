@@ -24,6 +24,8 @@ type (
 
 	WebsocketEvents map[string]EventHandler
 
+	OriginHandler func(*http.Request) bool
+
 	EventHandler func(WebsocketCtx)
 
 	WebsocketEventMessage struct {
@@ -67,12 +69,19 @@ func OnEvents(z *ZeroWebSocket, events ...Event) {
 	}
 }
 
-func (z *ZeroWebSocket) Route(svcCtx interface{}) rest.Route {
+func (z *ZeroWebSocket) RouteWithOrigin(svcCtx interface{}, originHandler OriginHandler) rest.Route {
+	if originHandler == nil {
+		originHandler = func(r *http.Request) bool {
+			return true
+		}
+	}
 	return rest.Route{
 		Method: http.MethodGet,
 		Path:   z.wsPath,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			upgrader := &websocket.Upgrader{}
+			upgrader := &websocket.Upgrader{
+				CheckOrigin: originHandler,
+			}
 			c, err := upgrader.Upgrade(w, r, nil)
 			if err != nil {
 				logx.Error("can not upgrade websocket")
@@ -103,4 +112,8 @@ func (z *ZeroWebSocket) Route(svcCtx interface{}) rest.Route {
 			}
 		}),
 	}
+}
+
+func (z *ZeroWebSocket) Route(svcCtx interface{}) rest.Route {
+	return z.RouteWithOrigin(svcCtx, nil)
 }
