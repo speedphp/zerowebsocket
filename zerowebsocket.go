@@ -26,6 +26,10 @@ type (
 
 	OriginHandler func(*http.Request) bool
 
+	CloseHandler func(int, string) error
+
+	ErrorHandler func(error)
+
 	EventHandler func(WebsocketCtx)
 
 	WebsocketEventMessage struct {
@@ -39,6 +43,14 @@ type (
 		Event  string
 		Conn   *websocket.Conn
 		Data   interface{}
+		Req    *http.Request
+	}
+
+	RouteOptions struct {
+		svcCtx        interface{}
+		OriginHandler OriginHandler
+		CloseHandler  EventHandler
+		ErrorHandler  ErrorHandler
 	}
 )
 
@@ -69,10 +81,15 @@ func OnEvents(z *ZeroWebSocket, events ...Event) {
 	}
 }
 
-func (z *ZeroWebSocket) RouteWithOrigin(svcCtx interface{}, originHandler OriginHandler) rest.Route {
-	if originHandler == nil {
-		originHandler = func(r *http.Request) bool {
+func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
+	if opts.OriginHandler == nil {
+		opts.OriginHandler = func(r *http.Request) bool {
 			return true
+		}
+	}
+	if opts.ErrorHandler == nil {
+		opts.ErrorHandler = func(err error) {
+			logx.Error(err)
 		}
 	}
 	return rest.Route{
@@ -80,7 +97,7 @@ func (z *ZeroWebSocket) RouteWithOrigin(svcCtx interface{}, originHandler Origin
 		Path:   z.wsPath,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			upgrader := &websocket.Upgrader{
-				CheckOrigin: originHandler,
+				CheckOrigin: opts.OriginHandler,
 			}
 			c, err := upgrader.Upgrade(w, r, nil)
 			if err != nil {
@@ -88,32 +105,38 @@ func (z *ZeroWebSocket) RouteWithOrigin(svcCtx interface{}, originHandler Origin
 				return
 			}
 			defer func() {
-				logx.Error("closing connection")
+				if opts.CloseHandler != nil {
+					opts.CloseHandler(WebsocketCtx{
+						Ctx:    r.Context(),
+						SvcCtx: opts.svcCtx,
+						Event:  "",
+						Conn:   c,
+						Data:   nil,
+						Req:    r,
+					})
+				}
 				c.Close()
 			}()
 			for {
 				_, descMessage, err := c.ReadMessage()
 				if err != nil {
-					logx.Error(err)
+					opts.ErrorHandler(err)
 					break
 				}
 				var websocketEventMessage WebsocketEventMessage
 				if err := json.Unmarshal([]byte(string(descMessage)), &websocketEventMessage); err != nil {
-					logx.Error(err)
+					opts.ErrorHandler(err)
 					return
 				}
 				z.eventList[websocketEventMessage.Event](WebsocketCtx{
 					Ctx:    r.Context(),
-					SvcCtx: svcCtx,
+					SvcCtx: opts.svcCtx,
 					Event:  websocketEventMessage.Event,
 					Conn:   c,
 					Data:   websocketEventMessage.Data,
+					Req:    r,
 				})
 			}
 		}),
 	}
-}
-
-func (z *ZeroWebSocket) Route(svcCtx interface{}) rest.Route {
-	return z.RouteWithOrigin(svcCtx, nil)
 }
