@@ -24,6 +24,8 @@ type (
 
 	WebsocketEvents map[string]EventHandler
 
+	ConnectedHandler func(WebsocketCtx)
+
 	OriginHandler func(*http.Request) bool
 
 	CloseHandler func(int, string) error
@@ -47,10 +49,11 @@ type (
 	}
 
 	RouteOptions struct {
-		SvcCtx        interface{}
-		OriginHandler OriginHandler
-		CloseHandler  EventHandler
-		ErrorHandler  ErrorHandler
+		SvcCtx           interface{}
+		OriginHandler    OriginHandler
+		CloseHandler     EventHandler
+		ErrorHandler     ErrorHandler
+		ConnectedHandler ConnectedHandler
 	}
 )
 
@@ -117,6 +120,16 @@ func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
 				}
 				c.Close()
 			}()
+			if opts.ConnectedHandler != nil {
+				opts.ConnectedHandler(WebsocketCtx{
+					Ctx:    r.Context(),
+					SvcCtx: opts.SvcCtx,
+					Event:  "",
+					Conn:   c,
+					Data:   nil,
+					Req:    r,
+				})
+			}
 			for {
 				_, descMessage, err := c.ReadMessage()
 				if err != nil {
