@@ -28,7 +28,7 @@ type (
 
 	OriginHandler func(*http.Request) bool
 
-	CloseHandler func(int, string) error
+	CloseHandler func(WebsocketCtx) error
 
 	ErrorHandler func(error)
 
@@ -52,7 +52,7 @@ type (
 	RouteOptions struct {
 		SvcCtx           interface{}
 		OriginHandler    OriginHandler
-		CloseHandler     EventHandler
+		CloseHandler     CloseHandler
 		ErrorHandler     ErrorHandler
 		ConnectedHandler ConnectedHandler
 	}
@@ -108,30 +108,32 @@ func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
 				logx.Error("can not upgrade websocket")
 				return
 			}
+			var ConnectedInfo interface{}
+			if opts.ConnectedHandler != nil {
+				ConnectedInfo = opts.ConnectedHandler(WebsocketCtx{
+					Ctx:           r.Context(),
+					SvcCtx:        opts.SvcCtx,
+					Event:         "",
+					Conn:          c,
+					Data:          nil,
+					Req:           r,
+					ConnectedInfo: nil,
+				})
+			}
 			defer func() {
 				if opts.CloseHandler != nil {
 					opts.CloseHandler(WebsocketCtx{
-						Ctx:    r.Context(),
-						SvcCtx: opts.SvcCtx,
-						Event:  "",
-						Conn:   c,
-						Data:   nil,
-						Req:    r,
+						Ctx:           r.Context(),
+						SvcCtx:        opts.SvcCtx,
+						Event:         "",
+						Conn:          c,
+						Data:          nil,
+						Req:           r,
+						ConnectedInfo: ConnectedInfo,
 					})
 				}
 				c.Close()
 			}()
-			var ConnectedInfo interface{}
-			if opts.ConnectedHandler != nil {
-				ConnectedInfo = opts.ConnectedHandler(WebsocketCtx{
-					Ctx:    r.Context(),
-					SvcCtx: opts.SvcCtx,
-					Event:  "",
-					Conn:   c,
-					Data:   nil,
-					Req:    r,
-				})
-			}
 			for {
 				_, descMessage, err := c.ReadMessage()
 				if err != nil {
