@@ -30,7 +30,7 @@ type (
 
 	OriginHandler func(*http.Request) bool
 
-	CloseHandler func(WebsocketCtx) error
+	CloseHandler func(WebsocketCtx)
 
 	ErrorHandler func(WebsocketCtx, error)
 
