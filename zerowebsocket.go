@@ -24,7 +24,7 @@ type (
 
 	WebsocketEvents map[string]EventHandler
 
-	ConnectedHandler func(WebsocketCtx)
+	ConnectedHandler func(WebsocketCtx) interface{}
 
 	OriginHandler func(*http.Request) bool
 
@@ -40,12 +40,13 @@ type (
 	}
 
 	WebsocketCtx struct {
-		Ctx    context.Context
-		SvcCtx interface{}
-		Event  string
-		Conn   *websocket.Conn
-		Data   interface{}
-		Req    *http.Request
+		Ctx           context.Context
+		SvcCtx        interface{}
+		Event         string
+		Conn          *websocket.Conn
+		Data          interface{}
+		Req           *http.Request
+		ConnectedInfo interface{}
 	}
 
 	RouteOptions struct {
@@ -120,8 +121,9 @@ func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
 				}
 				c.Close()
 			}()
+			var ConnectedInfo interface{}
 			if opts.ConnectedHandler != nil {
-				opts.ConnectedHandler(WebsocketCtx{
+				ConnectedInfo = opts.ConnectedHandler(WebsocketCtx{
 					Ctx:    r.Context(),
 					SvcCtx: opts.SvcCtx,
 					Event:  "",
@@ -142,12 +144,13 @@ func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
 					return
 				}
 				z.eventList[websocketEventMessage.Event](WebsocketCtx{
-					Ctx:    r.Context(),
-					SvcCtx: opts.SvcCtx,
-					Event:  websocketEventMessage.Event,
-					Conn:   c,
-					Data:   websocketEventMessage.Data,
-					Req:    r,
+					Ctx:           r.Context(),
+					SvcCtx:        opts.SvcCtx,
+					Event:         websocketEventMessage.Event,
+					Conn:          c,
+					Data:          websocketEventMessage.Data,
+					Req:           r,
+					ConnectedInfo: ConnectedInfo,
 				})
 			}
 		}),
