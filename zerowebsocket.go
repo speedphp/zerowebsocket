@@ -12,6 +12,8 @@ import (
 )
 
 type (
+	Conn *websocket.Conn
+
 	ZeroWebSocket struct {
 		wsPath    string
 		eventList WebsocketEvents
@@ -30,7 +32,7 @@ type (
 
 	CloseHandler func(WebsocketCtx) error
 
-	ErrorHandler func(error)
+	ErrorHandler func(WebsocketCtx, error)
 
 	EventHandler func(WebsocketCtx)
 
@@ -92,7 +94,7 @@ func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
 		}
 	}
 	if opts.ErrorHandler == nil {
-		opts.ErrorHandler = func(err error) {
+		opts.ErrorHandler = func(wc WebsocketCtx, err error) {
 			logx.Error(err)
 		}
 	}
@@ -120,29 +122,30 @@ func (z *ZeroWebSocket) Route(opts *RouteOptions) rest.Route {
 					ConnectedInfo: nil,
 				})
 			}
+			defaultCtx := WebsocketCtx{
+				Ctx:           r.Context(),
+				SvcCtx:        opts.SvcCtx,
+				Event:         "",
+				Conn:          c,
+				Data:          nil,
+				Req:           r,
+				ConnectedInfo: ConnectedInfo,
+			}
 			defer func() {
 				if opts.CloseHandler != nil {
-					opts.CloseHandler(WebsocketCtx{
-						Ctx:           r.Context(),
-						SvcCtx:        opts.SvcCtx,
-						Event:         "",
-						Conn:          c,
-						Data:          nil,
-						Req:           r,
-						ConnectedInfo: ConnectedInfo,
-					})
+					opts.CloseHandler(defaultCtx)
 				}
 				c.Close()
 			}()
 			for {
 				_, descMessage, err := c.ReadMessage()
 				if err != nil {
-					opts.ErrorHandler(err)
+					opts.ErrorHandler(defaultCtx, err)
 					break
 				}
 				var websocketEventMessage WebsocketEventMessage
 				if err := json.Unmarshal([]byte(string(descMessage)), &websocketEventMessage); err != nil {
-					opts.ErrorHandler(err)
+					opts.ErrorHandler(defaultCtx, err)
 					return
 				}
 				z.eventList[websocketEventMessage.Event](WebsocketCtx{
